@@ -1,0 +1,10 @@
+.map {
+    width: 600px;
+    height: 600px;
+    display: block;
+    width: 40%;
+}
+
+.optimal-camp-determine-btn {
+    color: blue;
+}
