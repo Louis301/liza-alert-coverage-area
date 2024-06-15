@@ -10,7 +10,7 @@ app = Flask(__name__)
 CORS(app)
 
 
-# -----------------------------------------------------------------------------------------------------------------------------------------
+
 def get_terrain_elevations(potential_camp: dict, determationSettings: dict) -> pd.DataFrame:
 
     r_max = int(determationSettings['r_max'])
@@ -37,28 +37,23 @@ def get_terrain_elevations(potential_camp: dict, determationSettings: dict) -> p
     return pd.DataFrame(terrain_elevation)
 
 
-# -----------------------------------------------------------------------------------------------------------------------------------------
-def is_reliability_signal(PL: float, determationSettings) -> bool:
-    Ptr = determationSettings['Ptr']
-    TXLafd = determationSettings['TXLafd']
-    TXGant = determationSettings['TXGant']
-    Gmimo = determationSettings['Gmimo']
-    TXPenetL = determationSettings['TXPenetL']
-    SensRx =  determationSettings['SensRx']
-    return Ptr - TXLafd  + TXGant + Gmimo - TXPenetL - PL > SensRx
 
-
-# -----------------------------------------------------------------------------------------------------------------------------------------
 def get_caverage_area(df_terrain: pd.DataFrame, determationSettings: dict) -> pd.DataFrame:
     
     e_matrix = []
     
-    r_max = determationSettings['r_max']
-    profile_points_length = determationSettings['profilePointsLength']
-    profile_quantity = determationSettings['profilesQuantity']
-    h_transmitter = determationSettings['h_transmitter']
-    h_mobile = determationSettings['h_mobile']
-    f = determationSettings['frequency']
+    r_max =                 int(determationSettings['r_max'])
+    profile_points_length = int(determationSettings['profilePointsLength'])
+    profile_quantity =      int(determationSettings['profilesQuantity'])
+    Ptr =                   float(determationSettings['Ptr'])
+    TXLafd =                float(determationSettings['TXLafd'])
+    TXGant =                float(determationSettings['TXGant'])
+    Gmimo =                 float(determationSettings['Gmimo'])
+    TXPenetL =              float(determationSettings['TXPenetL'])
+    SensRx =                float(determationSettings['SensRx'])
+    h_transmitter =         float(determationSettings['h_transmitter'])
+    h_mobile =              float(determationSettings['h_mobile'])
+    f =                     float(determationSettings['frequency'])
 
     d = r_max / profile_points_length
     Lambda = 299792458 / (f)         
@@ -89,13 +84,13 @@ def get_caverage_area(df_terrain: pd.DataFrame, determationSettings: dict) -> pd
             if j > HmaxId and Hkl > 0:
                 PLd = 13.5 + 20*math.log10(Nu)
             PL = PL0 + PLd            
-            reliability_profile.append(is_reliability_signal(PL, determationSettings))
+            reliability_profile.append(Ptr - TXLafd  + TXGant + Gmimo - TXPenetL - PL > SensRx)
         e_matrix.append(reliability_profile)
     
     return pd.DataFrame(e_matrix)
 
 
-# -----------------------------------------------------------------------------------------------------------------------------------------
+
 def get_camp_optimality_index(df_potential_camp_ca: pd.DataFrame) -> int:
     camp_optimality_index = 0
     for i in range(df_potential_camp_ca.shape[1]):
@@ -105,21 +100,20 @@ def get_camp_optimality_index(df_potential_camp_ca: pd.DataFrame) -> int:
     return camp_optimality_index
 
 
-# ========================================================================================================
-def test(determationSettings: dict, potential_camp: dict) -> list:
 
-    r_max = int(determationSettings['r_max'])
+def get_ca_vizualization(determationSettings: dict, optimal_camp: dict, optimal_camp_ca: pd.DataFrame) -> list:
+
+    r_max =                 int(determationSettings['r_max'])
     profile_points_length = int(determationSettings['profilePointsLength'])
-    profile_quantity = int(determationSettings['profilesQuantity'])
+    profile_quantity =      int(determationSettings['profilesQuantity'])
 
-    # ca_fragments = []
     ca_fragments = []   # список массивов из массивов точек фрагмента
     shtrih_profiles = []
 
     d = r_max / profile_points_length                                            # длина ЭППР на профиле
     delta_asimut = 360 / profile_quantity
     asimut = 360 - delta_asimut / 2                                              # начальное значение азимута
-    transmitter_coords = Point(potential_camp['lat'], potential_camp['lng'])
+    transmitter_coords = Point(optimal_camp['lat'], optimal_camp['lng'])
     h0 = d / 2                                                                   # радиус площадки с оптимальным лагерем на профиле
     x  = d / math.cos(asimut * (math.pi / 180))                                  # длина ЭППР на штрих-профиле
     x0 = h0 / math.cos(asimut * (math.pi / 180))                                 # радиус площадки с оптимальным лагерем на штрих-профиле
@@ -132,23 +126,24 @@ def test(determationSettings: dict, potential_camp: dict) -> list:
             sh_profile.append([ float(coord) for coord in point ])
         shtrih_profiles.append(sh_profile)
 
-    df = pd.DataFrame(shtrih_profiles).T
+    df_ca_fragments_border = pd.DataFrame(shtrih_profiles).T
 
     for i in range(profile_quantity):
         for j in range(profile_points_length):
-            ca_fragments.append([ 
-                df[i][j], 
-                df[i][j + 1], 
-                df[i + 1][j + 1],
-                df[i + 1][j], 
-                df[i][j], 
-            ])
+            if optimal_camp_ca[j][i]:
+            # if i % 2 == 0:            
+                ca_fragments.append([ 
+                    df_ca_fragments_border[i][j], 
+                    df_ca_fragments_border[i][j + 1], 
+                    df_ca_fragments_border[i + 1][j + 1],
+                    df_ca_fragments_border[i + 1][j], 
+                    df_ca_fragments_border[i][j], 
+                ])
 
     return ca_fragments
-# ========================================================================================================
 
 
-# -----------------------------------------------------------------------------------------------------------------------------------------
+
 @app.route('/api', methods=['POST', 'GET'])
 def determine_optimal_camp():
     data = request.get_json()
@@ -161,24 +156,26 @@ def determine_optimal_camp():
     
     try:
         camp_optimality_indexes = []
+        df_potential_camps_ca = []
 
         for potential_camp in potential_camps:
-            df_potential_camp_ca = get_caverage_area(
-                get_terrain_elevations(potential_camp, determationSettings), determationSettings
+            df_potential_camps_ca.append(
+                get_caverage_area(
+                get_terrain_elevations(potential_camp, determationSettings), determationSettings)
             )
-            camp_optimality_indexes.append(get_camp_optimality_index(df_potential_camp_ca))
+            camp_optimality_indexes.append(get_camp_optimality_index(df_potential_camps_ca[-1]))
 
         optimal_camp_id = camp_optimality_indexes.index(max(camp_optimality_indexes)) 
     
         return jsonify({ 'ca_reporting_data': {
-            'test' : test(determationSettings, potential_camps[optimal_camp_id]),
-            'ca_reporting_data' : optimal_camp_id
+            'test' : get_ca_vizualization(determationSettings, potential_camps[optimal_camp_id], df_potential_camps_ca[optimal_camp_id]),
+            'optimal_camp_id' : optimal_camp_id
         }})
     
     except ValueError:
         return jsonify({'error': 'Invalid input data'}), 400
 
 
-# -----------------------------------------------------------------------------------------------------------------------------------------
+
 if __name__ == '__main__':
     app.run(host="0.0.0.0", threaded=True, port=5000, debug=True)

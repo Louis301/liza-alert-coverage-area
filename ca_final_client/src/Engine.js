@@ -134,7 +134,7 @@ export default function Engine()
             });
             ca_reporting_data = response.data.ca_reporting_data;
             setCAReportingData(ca_reporting_data)
-            // console.log(ca_reporting_data)
+            console.log(ca_reporting_data.test)
         } catch (error) {
             // console.error(error);
             ca_reporting_data = 'Error occurred';
@@ -179,43 +179,69 @@ export default function Engine()
         map.current.on('load', async function() {
             if (caReportingData != null) 
             {
-                const geojson = {
-                    "type": "FeatureCollection",
-                    "features": [
-                        {
-                        "type": "Feature",
-                        "properties": {},
-                        "geometry": {
-                            "coordinates": caReportingData.test,
-                            "type": "Polygon"
+                // const reporting_test = [...caReportingData.test]
+                // console.log(reporting_test)
+
+                let i = 0
+                for (let fragment of caReportingData.test)
+                {
+                    // console.log(i)
+
+                    map.current.addSource(`'rio_cats-${i}'`, {
+                        type: 'geojson',
+                        // data: geojson
+                        data: {
+                            "type": "FeatureCollection",
+                            "features": [
+                                {
+                                "type": "Feature",
+                                "properties": {},
+                                "geometry": {
+                                    "coordinates": [fragment],
+                                    "type": "Polygon"
+                                }
+                                }
+                            ]
                         }
+                    });
+        
+                    map.current.addLayer({
+                        'id': `'rio_cats-${i}'`, 
+                        // 'type': 'line',
+                        'type': 'fill',
+                        'source': `'rio_cats-${i}'`,
+                        'layout': {},
+                        // 'layout': {
+                            // 'line-join': 'round',
+                            // 'line-cap': 'round'
+                        // },
+                        'paint': {
+                            'fill-color': '#0000ff',
+                            'fill-opacity': 0.4,
+                            // 'line-color': '#222',
+                            // 'line-width': 2
                         }
-                    ]
+                    });
+
+                    i++;
                 }
+            
+                }
+                // const geojson = {
+                //     "type": "FeatureCollection",
+                //     "features": [
+                //         {
+                //         "type": "Feature",
+                //         "properties": {},
+                //         "geometry": {
+                //             "coordinates": [caReportingData.test[0]],
+                //             "type": "Polygon"
+                //         }
+                //         }
+                //     ]
+                // }
     
-                map.current.addSource('rio_cats', {
-                    type: 'geojson',
-                    data: geojson
                 });
-    
-                map.current.addLayer({
-                    'id': 'rio_cats', 
-                    'type': 'line',
-                    'source': 'rio_cats',
-                    // 'layout': {},
-                    'layout': {
-                        'line-join': 'round',
-                        'line-cap': 'round'
-                    },
-                    'paint': {
-                        // 'fill-color': '#000000',
-                        // 'fill-opacity': 0.8
-                        'line-color': '#222',
-                        'line-width': 2
-                    }
-                });
-            }
-        });
 
     }, [featureId, caReportingData]);
     
@@ -241,6 +267,8 @@ export default function Engine()
 
     React.useMemo(() => {
         // console.log(caReportingData)
+        // if (caReportingData != null)
+            // console.log(potentialCamps[caReportingData.optimal_camp_id].marker)
 
     }, [caReportingData])
 
