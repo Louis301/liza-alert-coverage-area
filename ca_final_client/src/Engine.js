@@ -1,9 +1,7 @@
 import React from "react";
 import * as maptilersdk from "@maptiler/sdk";
 import * as maptilerClient from '@maptiler/client';
-// import "@maptiler/geocoding-control/style.css";
 import "@maptiler/sdk/dist/maptiler-sdk.css";
-// import "maplibre-gl/dist/maplibre-gl.css";
 import axios from 'axios';
 
 const apiKey = "nXWhedT4bqmfFmY1fnqL";
@@ -20,6 +18,8 @@ export default function Engine()
     const [caReportingData, setCAReportingData] = React.useState(null)
     const mapContainer = React.useRef(null);
     const map = React.useRef(null);
+
+    const [optimalCamp, setOptimalCamp] = React.useState(null)
     
     const [programSettings, setProgramSettings] = React.useState({
         "r_max" : 3, 
@@ -134,17 +134,15 @@ export default function Engine()
             });
             ca_reporting_data = response.data.ca_reporting_data;
             setCAReportingData(ca_reporting_data)
-            console.log(ca_reporting_data.test)
+            console.log(ca_reporting_data)
         } catch (error) {
-            // console.error(error);
+            console.error(error);
             ca_reporting_data = 'Error occurred';
         }
     }
 
 
     React.useEffect(() => {
-        // if (map.current) return;
-
         let mapCenter
         maptilersdk.config.apiKey = apiKey;
 
@@ -179,17 +177,11 @@ export default function Engine()
         map.current.on('load', async function() {
             if (caReportingData != null) 
             {
-                // const reporting_test = [...caReportingData.test]
-                // console.log(reporting_test)
-
                 let i = 0
-                for (let fragment of caReportingData.test)
+                for (let fragment of caReportingData.test) 
                 {
-                    // console.log(i)
-
-                    map.current.addSource(`'rio_cats-${i}'`, {
+                    map.current.addSource(`rio_cats-${i}`, {
                         type: 'geojson',
-                        // data: geojson
                         data: {
                             "type": "FeatureCollection",
                             "features": [
@@ -204,44 +196,20 @@ export default function Engine()
                             ]
                         }
                     });
-        
                     map.current.addLayer({
-                        'id': `'rio_cats-${i}'`, 
-                        // 'type': 'line',
+                        'id': `rio_cats-${i}`, 
                         'type': 'fill',
-                        'source': `'rio_cats-${i}'`,
+                        'source': `rio_cats-${i}`,
                         'layout': {},
-                        // 'layout': {
-                            // 'line-join': 'round',
-                            // 'line-cap': 'round'
-                        // },
                         'paint': {
                             'fill-color': '#0000ff',
                             'fill-opacity': 0.4,
-                            // 'line-color': '#222',
-                            // 'line-width': 2
                         }
                     });
-
                     i++;
                 }
-            
-                }
-                // const geojson = {
-                //     "type": "FeatureCollection",
-                //     "features": [
-                //         {
-                //         "type": "Feature",
-                //         "properties": {},
-                //         "geometry": {
-                //             "coordinates": [caReportingData.test[0]],
-                //             "type": "Polygon"
-                //         }
-                //         }
-                //     ]
-                // }
-    
-                });
+            }
+        });
 
     }, [featureId, caReportingData]);
     
@@ -265,10 +233,20 @@ export default function Engine()
 
     }, [potentialCamps])
 
+    
     React.useMemo(() => {
-        // console.log(caReportingData)
-        // if (caReportingData != null)
-            // console.log(potentialCamps[caReportingData.optimal_camp_id].marker)
+
+        if (caReportingData != null)
+        {
+            let potential_camps = [...potentialCamps]
+            const oCampId = caReportingData.optimal_camp_id
+            const lat = potentialCamps[oCampId].lat
+            const lng = potentialCamps[oCampId].lng
+
+            potential_camps[oCampId].marker = new maptilersdk.Marker({color: '#ff0000'}).setLngLat([lng, lat]).addTo(map.current)
+            
+            setPotentialCamps(potential_camps)
+        }
 
     }, [caReportingData])
 
