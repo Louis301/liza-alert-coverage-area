@@ -18,8 +18,6 @@ export default function Engine()
     const [caReportingData, setCAReportingData] = React.useState(null)
     const mapContainer = React.useRef(null);
     const map = React.useRef(null);
-
-    const [optimalCamp, setOptimalCamp] = React.useState(null)
     
     const [programSettings, setProgramSettings] = React.useState({
         "r_max" : 3, 
@@ -129,12 +127,12 @@ export default function Engine()
         }
 
         try {
-            const response = await axios.post('http://192.168.1.34:5000/api', { 
+            const response = await axios.post('http://192.168.1.33:5000/api', { 
                 determation_input_data: Object.values(determation_input_data) 
             });
             ca_reporting_data = response.data.ca_reporting_data;
             setCAReportingData(ca_reporting_data)
-            console.log(ca_reporting_data)
+            // console.log(ca_reporting_data)
         } catch (error) {
             console.error(error);
             ca_reporting_data = 'Error occurred';
@@ -165,7 +163,8 @@ export default function Engine()
         map.current.on('click', (e) => {
             const lat = e.lngLat.lat
             const lng = e.lngLat.lng
-
+            
+            console.log(lat, lng)
             setLastPotentialCamp({
                 lat: lat,
                 lng: lng, 
@@ -178,7 +177,7 @@ export default function Engine()
             if (caReportingData != null) 
             {
                 let i = 0
-                for (let fragment of caReportingData.test) 
+                for (let fragment of caReportingData.ca_fragments) 
                 {
                     map.current.addSource(`rio_cats-${i}`, {
                         type: 'geojson',
@@ -216,7 +215,7 @@ export default function Engine()
     React.useMemo(() => {
         if (potentialCamps.length > 0 || lastPotentialCamp !== null) {
             let potential_camps = [...potentialCamps]
-            potential_camps.push({...lastPotentialCamp, name: `camp ${potential_camps.length + 1}`, id: potentialCamps.length})
+            potential_camps.push({...lastPotentialCamp, name: `Точка ${potential_camps.length + 1}`, id: potentialCamps.length})
             setPotentialCamps(potential_camps)
         }
 
@@ -243,7 +242,7 @@ export default function Engine()
             const lat = potentialCamps[oCampId].lat
             const lng = potentialCamps[oCampId].lng
 
-            potential_camps[oCampId].marker = new maptilersdk.Marker({color: '#ff0000'}).setLngLat([lng, lat]).addTo(map.current)
+            potential_camps[oCampId].marker = new maptilersdk.Marker({color: '#00ff00'}).setLngLat([lng, lat]).addTo(map.current)
             
             setPotentialCamps(potential_camps)
         }
@@ -252,80 +251,88 @@ export default function Engine()
 
     
     return (
-        <>
-            <h1>Liza Alert camp search </h1>
-
-            <button onClick={determineOptimalCamp}>Determine the optimal camp</button>
-            <hr/>
-
-            <h2>Entering of work location</h2>
-            <input type='text' value={searchTerm} placeholder="Place" onChange={addressBarHandler}/>
-            <ul>
-                {featuresList.map((feature, idx) => (
-                    <li key={idx}>
-                        <button onClick={selectFutureItem} value={idx}>{feature.address}</button>
-                    </li>
-                ))}
-            </ul>
-            <hr/>
-
-            <div className="map" ref={mapContainer}/>
-            <hr/>
-
-            <h2>Program settings</h2>
-            <form>
-                <span>r_max </span>
-                <input value={programSettings.r_max} onChange={e => setProgramSettings({...programSettings, r_max: e.target.value})}/>
-                
-                <span>profilePointsLength</span>
-                <input value={programSettings.profilePointsLength} onChange={e => setProgramSettings({...programSettings, profilePointsLength: e.target.value})}/>
-
-                <span>profilesQuantity</span>
-                <input value={programSettings.profilesQuantity} onChange={e => setProgramSettings({...programSettings, profilesQuantity: e.target.value})}/>
-
-                <span>frequency</span>
-                <input value={programSettings.frequency} onChange={e => setProgramSettings({...programSettings, frequency: e.target.value})}/>
-
-                <span>Ptr</span>
-                <input value={programSettings.Ptr} onChange={e => setProgramSettings({...programSettings, Ptr: e.target.value})}/>
-
-                <span>TXLafd</span>
-                <input value={programSettings.TXLafd} onChange={e => setProgramSettings({...programSettings, TXLafd: e.target.value})}/>
-
-                <span>TXGant</span>
-                <input value={programSettings.TXGant} onChange={e => setProgramSettings({...programSettings, TXGant: e.target.value})}/>
-        
-                <span>Gmimo</span>
-                <input value={programSettings.Gmimo} onChange={e => setProgramSettings({...programSettings, Gmimo: e.target.value})}/>
-
-                <span>TXPenetL</span>
-                <input value={programSettings.TXPenetL} onChange={e => setProgramSettings({...programSettings, TXPenetL: e.target.value})}/>
-
-                <span>SensRx</span>
-                <input value={programSettings.SensRx} onChange={e => setProgramSettings({...programSettings, SensRx: e.target.value})}/>
-
-                <span>h_transmitter</span>
-                <input value={programSettings.h_transmitter} onChange={e => setProgramSettings({...programSettings, h_transmitter: e.target.value})}/>
-
-                <span>h_mobile</span>
-                <input value={programSettings.h_mobile} onChange={e => setProgramSettings({...programSettings, h_mobile: e.target.value})}/>
-            </form>
-            <hr/>
-
-            <h2>Camps controller</h2>
-            <button onClick={showCamps}>Show camps</button>
-            <button onClick={hideCamps}>Hide camps</button>
-            <button onClick={deleteCamps}>Delete camps</button>
-            <ul>
-                {potentialCamps.map((item, idx) => (
-                    <li key={idx}>
-                        <input value={item.name} onChange={e => changePotentialCampName(e, idx)}/>
-                        <button onClick={showCamp} value={idx}>show</button>
-                        <button onClick={deleteCamp} value={idx}>delete</button>
-                    </li>
-                ))}
-            </ul>
-            <hr/>
-        </> 
+        <div className='MapVision'>
+            <div className='leftPanel'>
+                <div className='location'>
+                    <h2>Введите место поисков</h2>
+                    <input type='text' value={searchTerm} placeholder="рабочая локация" onChange={addressBarHandler}/>
+                    <ul>
+                        {featuresList.map((feature, idx) => (
+                            <li key={idx}>
+                                <button onClick={selectFutureItem} value={idx}>{feature.address}</button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                <div className='lostElement'></div>
+                <h2>Настройки</h2>
+                <form>
+                    <span>Радиус проектируемой ЗРП (км) </span>
+                    <input value={programSettings.r_max} onChange={e => setProgramSettings({...programSettings, r_max: e.target.value})}/>
+                    
+                    <span>Количество высот профиля рельефа на азимутальном направлении</span>
+                    <input value={programSettings.profilePointsLength} onChange={e => setProgramSettings({...programSettings, profilePointsLength: e.target.value})}/>
+            
+                    <span>Количество азимутальных направлений ЗРП</span>
+                    <input value={programSettings.profilesQuantity} onChange={e => setProgramSettings({...programSettings, profilesQuantity: e.target.value})}/>
+            
+                    <span>Несущая частота радиосистемы (МГц)</span>
+                    <input value={programSettings.frequency} onChange={e => setProgramSettings({...programSettings, frequency: e.target.value})}/>
+            
+                    <span>Мощность трансмиттера (dBm)</span>
+                    <input value={programSettings.Ptr} onChange={e => setProgramSettings({...programSettings, Ptr: e.target.value})}/>
+            
+                    <span>Потери в антенно-фидерном тракте трансмиттера (dB)</span>
+                    <input value={programSettings.TXLafd} onChange={e => setProgramSettings({...programSettings, TXLafd: e.target.value})}/>
+            
+                    <span>Усиление антенны трансмиттера (dB)</span>
+                    <input value={programSettings.TXGant} onChange={e => setProgramSettings({...programSettings, TXGant: e.target.value})}/>
+            
+                    <span>Усиление MIMO (dB)</span>
+                    <input value={programSettings.Gmimo} onChange={e => setProgramSettings({...programSettings, Gmimo: e.target.value})}/>
+            
+                    <span>Потери сигнала транмиттера при прохождении через препятствия (dB)</span>
+                    <input value={programSettings.TXPenetL} onChange={e => setProgramSettings({...programSettings, TXPenetL: e.target.value})}/>
+            
+                    <span>Чувствительность приёмника (dBm)</span>
+                    <input value={programSettings.SensRx} onChange={e => setProgramSettings({...programSettings, SensRx: e.target.value})}/>
+            
+                    <span>Высота подвеса трансмиттера (м)</span>
+                    <input value={programSettings.h_transmitter} onChange={e => setProgramSettings({...programSettings, h_transmitter: e.target.value})}/>
+            
+                    <span>Высота подвеса приёмника (м)</span>
+                    <input value={programSettings.h_mobile} onChange={e => setProgramSettings({...programSettings, h_mobile: e.target.value})}/>
+                </form>
+                <div className = 'Calculation'>
+                    <button onClick={determineOptimalCamp}>Вычислить зону покрытия</button>
+                </div>
+                <div className='lostElement'></div>
+                <div className='DotCamp'>
+                    <h2>Сохранённые точки</h2>
+                    <button onClick={showCamps}><img src="\pic\eye.svg" alt="Показать точки"></img>
+                    </button>
+                    <button onClick={hideCamps}><img src='\pic\eye-off.svg' alt="Скрыть точки"></img></button>
+                    <button onClick={deleteCamps}><img src='\pic\trash-01.svg' alt="Удалить точки"></img></button>
+                    <div className='lostElement'></div>
+                    <ul>
+                        {potentialCamps.map((item, idx) => (
+                            <li key={idx}>
+                                <button onClick={showCamp} value={idx}>
+                                    <img src="\pic\eye.svg" alt="Показать точку"></img>
+                                </button>
+                                <button onClick={deleteCamp} value={idx}>
+                                    <img src='\pic\trash-01.svg' alt="Удалить точку"></img>
+                                </button>
+                                <button>
+                                <input value={item.name} onChange={e => changePotentialCampName(e, idx)}></input>
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </div>
+            <div className="map" ref={mapContainer}>
+            </div>
+    </div>
     )
 }
